@@ -43,7 +43,7 @@
         <form id="form">
             <div class="container">
                 <div class="row justify-content-start">
-                    <div class="col">
+                    <div class="col-sm gy-4">
                         <div class="">
                             <div class="input-group-text">Period:</div>
                             <div class="container">
@@ -93,7 +93,7 @@
                             {{errors}}
                         </div>
                     </div>
-                    <div class="col-4">
+                    <div class="col-sm gy-4">
                         <span class="input-group-text"><label for="amc_id" class="form-label">AMCs:</label></span>
 
                         <select name="amc_id" id="amc_id" v-model="selected_amc" @change="amcSelected"
@@ -105,7 +105,7 @@
 
                         </select>
                     </div>
-                    <div class="col-4">
+                    <div class="col-sm gy-4">
                         <span class="input-group-text"><label for="cat_ids"
                                 class="form-label">Categories:</label></span>
                         <select name="cat_ids" id="cat_ids" v-model="selected_cat" @change="onSubmit" multiple
