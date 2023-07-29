@@ -1,8 +1,8 @@
-function getPreviousDay(days = 1) {
-    const prev = new Date();
-    prev.setDate(prev.getDate() - days);
+function getDateDelta(dt, days = 1) {
+    const dt2 = new Date(dt);
+    dt2.setDate(dt2.getDate() + days);
 
-    return prev.toISOString().substr(0, 10);
+    return dt2.toISOString().substr(0, 10);
 }
 function scrollToSelected(select_id) {
     var select = document.getElementById(select_id);
@@ -38,6 +38,29 @@ function fetch_categories(amcid) {
     return d;
 }
 
+function fetch_latest_date(amcid) {
+    var req_data = JSON.stringify({ data: 'latest_date'});
+    // console.log(req_data);
+    var d = [];
+    $.ajax({
+        url: '/get_data',
+        method: 'POST',
+        processData: false,
+        dataType: 'json',
+        async: false,
+        data: req_data,
+        contentType: 'application/json',
+        success: function (data) {
+            d = data["latest_date"].substr(0,10);
+        },
+        error: function (xhr, status, error) {
+            // Data retrieval error
+            console.log(error);
+        }
+    });
+    return d;
+}
+
 function fetch_amcs() {
     var d = [];
     $.ajax({
@@ -62,8 +85,8 @@ function fetch_amcs() {
 const app = Vue.createApp({
     data() {
         return {
-            end_date: getPreviousDay(),
-            start_date: getPreviousDay(2),
+            // end_date: getPreviousDay(),
+            end_date: fetch_latest_date(),
             selected_amc: '0',
             selected_cat: ['06'],
             errors: '',
@@ -77,6 +100,9 @@ const app = Vue.createApp({
         },
         amcs() {
             return fetch_amcs();
+        },
+        start_date() {
+            return getDateDelta(this.end_date, -1);
         }
     },
     methods: {

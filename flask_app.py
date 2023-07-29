@@ -64,6 +64,9 @@ def get_data():
     if requested["data"] == "amcs":
         df = db_get_amc_list(conn)
         data = df.to_json(orient="records")
+    if requested["data"] == "latest_date":
+        dt = db_get_latest_nav_date(conn)
+        data = f'{{"latest_date": "{dt}"}}'
 
     db_close(conn)
     return data

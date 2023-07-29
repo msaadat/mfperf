@@ -35,6 +35,18 @@ def db_close(conn):
     conn.close()
 
 
+def db_get_latest_nav_date(conn):
+    qry = """
+    SELECT nav_date from (SELECT nav_date, COUNT(nav_date) AS date_count
+    FROM navs
+    GROUP BY nav_date
+    ORDER BY nav_date DESC
+    LIMIT 4) order by date_count desc limit 1;
+    """
+    res = conn.execute(qry)
+    return res.fetchone()[0]
+
+
 def db_get_fund_id(conn, fund_name):
     cur = conn.cursor()
     res = cur.execute(f"SELECT fund_id FROM funds WHERE fund_name='{fund_name}'")
@@ -320,7 +332,7 @@ if __name__ == "__main__":
 
     # db_update_fundlist(conn)
     # db_update_fundlist(conn, True)
-    db_daily_update(conn, datetime(2023, 7, 15))
+    # db_daily_update(conn, datetime(2023, 7, 15))
 
     end_date = datetime(2023,7,27)
     start_date = datetime(2023,7,28)
