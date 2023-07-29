@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+    <link rel="stylesheet" href="/static/datatables.min.css">
+    <link rel="stylesheet" href="/static/main.css">
+    <!-- <link rel="stylesheet" href="/static/datatables.min.css"> -->
+
+
+    <title>Mutual Funds Performance</title>
+</head>
+
+<body>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM"
+        crossorigin="anonymous"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="/static/jquery-3.7.0.min.js"></script>
+    <script src="/static/datatables.min.js"></script>
+
+
+
+    <!-- v-scope value can be omitted -->
+    <div class="container-xxl" id="app">
+        <h1>Mutual Funds Performance</h1>
+        <div id="floatingBarsG">
+            <div class="blockG" id="rotateG_01"></div>
+            <div class="blockG" id="rotateG_02"></div>
+            <div class="blockG" id="rotateG_03"></div>
+            <div class="blockG" id="rotateG_04"></div>
+            <div class="blockG" id="rotateG_05"></div>
+            <div class="blockG" id="rotateG_06"></div>
+            <div class="blockG" id="rotateG_07"></div>
+            <div class="blockG" id="rotateG_08"></div>
+        </div>
+
+        <form id="form">
+            <div class="container">
+                <div class="row justify-content-start">
+                    <div class="col">
+                        <div class="">
+                            <div class="input-group-text">Period:</div>
+                            <div class="container">
+                                <div class="row">
+                                    <div class="col">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="radio" name="period_type"
+                                                id="period_type2" checked value="custom" v-model="period_type"
+                                                @change="onSubmit">
+                                            <label class="form-check-label" for="period_type2">
+                                                Custom period
+                                            </label>
+
+                                        </div>
+                                    </div>
+                                    <div class="col">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="radio" name="period_type"
+                                                id="period_type1" value="mufap" v-model="period_type"
+                                                @change="onSubmit">
+                                            <label class="form-check-label" for="period_type1">
+                                                MUFAP Format
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="container">
+                                <div class="row align-items-start">
+                                    <div class="col">
+                                        <div v-if="period_type=='custom'">
+                                            <label for="start_date">From: </label> <br>
+                                            <input type="date" name="start_date" id="start_date" v-model="start_date"
+                                                @input="onSubmit">
+                                        </div>
+                                    </div>
+                                    <div class="col align-self-end">
+                                        <label for="end_date">To:</label> <br>
+                                        <input type="date" name="end_date" id="end_date" v-model="end_date"
+                                            @input="onSubmit">
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+                        <div style="color:#dc3545">
+                            {{errors}}
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <span class="input-group-text"><label for="amc_id" class="form-label">AMCs:</label></span>
+
+                        <select name="amc_id" id="amc_id" v-model="selected_amc" @change="amcSelected"
+                            class="form-select">
+                            <option value="0" selected>All</option>
+                            <option v-for="c in amcs" v-bind:value="c['amc_id']">
+                                {{ c['amc'] }}
+                            </option>
+
+                        </select>
+                    </div>
+                    <div class="col-4">
+                        <span class="input-group-text"><label for="cat_ids"
+                                class="form-label">Categories:</label></span>
+                        <select name="cat_ids" id="cat_ids" v-model="selected_cat" @change="onSubmit" multiple
+                            class="form-select">
+                            <option value="0" selected>All</option>
+                            <option v-for="c in categories" v-bind:value="c['cat_id']">
+                                {{ c['category'] }}
+                            </option>
+
+                        </select>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- <button type="submit">Submit</button> -->
+        </form>
+        <p>
+        </p>
+
+
+
+        <div id="div-performance" class="dt-bootstrap5">
+
+        </div>
+
+    </div>
+
+    <script src="/static/main.js"></script>
+
+</body>
+
+</html>
