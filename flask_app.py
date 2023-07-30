@@ -91,6 +91,7 @@ def get_performance_custom(start_date, end_date, cat_ids=[], amc_id=""):
     col_names = ["Fund", "Category", "Return"]
     df = df[col_list]
     df.columns = col_names
+    df = df.dropna()
 
     return df
 
@@ -131,6 +132,7 @@ def get_performance_mufap(end_date, cat_ids=[], amc_id=""):
     df = df[col_list]
     df = df.rename(columns={"fund_name": "Fund", "category": "Category"})
     df = df.dropna(subset=ret_cols, how='all')
+    df = df.fillna('n/a')
 
     
 
