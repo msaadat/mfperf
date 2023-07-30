@@ -15,72 +15,43 @@ function scrollToSelected(select_id) {
     }
 }
 
+function fetch_data(params=null) {
+    var d = [];
+    $.ajax({
+        url: '/get_data',
+        method: 'POST',
+        processData: false,
+        dataType: 'json',
+        async: false,
+        data: params,
+        contentType: 'application/json',
+        success: function (data) {
+            d = data;
+        },
+        error: function (xhr, status, error) {
+            console.log(error);
+        }
+    });
+    return d;
+}
+
 function fetch_categories(amcid) {
     var req_data = JSON.stringify({ data: 'categories', amc_id: amcid });
-    // console.log(req_data);
-    var d = [];
-    $.ajax({
-        url: '/get_data',
-        method: 'POST',
-        processData: false,
-        dataType: 'json',
-        async: false,
-        data: req_data,
-        contentType: 'application/json',
-        success: function (data) {
-            d = data;
-        },
-        error: function (xhr, status, error) {
-            // Data retrieval error
-            console.log(error);
-        }
-    });
+    var d = fetch_data(req_data);
     return d;
 }
 
-function fetch_latest_date(amcid) {
+function fetch_latest_date() {
     var req_data = JSON.stringify({ data: 'latest_date'});
-    // console.log(req_data);
-    var d = [];
-    $.ajax({
-        url: '/get_data',
-        method: 'POST',
-        processData: false,
-        dataType: 'json',
-        async: false,
-        data: req_data,
-        contentType: 'application/json',
-        success: function (data) {
-            d = data["latest_date"].substr(0,10);
-        },
-        error: function (xhr, status, error) {
-            // Data retrieval error
-            console.log(error);
-        }
-    });
-    return d;
+    var d = fetch_data(req_data);
+    return d["latest_date"].substr(0,10);
 }
 
-function fetch_amcs() {
-    var d = [];
-    $.ajax({
-        url: '/get_data',
-        method: 'POST',
-        processData: false,
-        dataType: 'json',
-        async: false,
-        data: JSON.stringify({ data: 'amcs' }),
-        contentType: 'application/json',
-        success: function (data) {
-            d = data;
-        },
-        error: function (xhr, status, error) {
-            console.log(error);
-        }
-    });
+function fetch_amcs(amcid) {
+    var req_data = JSON.stringify({ data: 'amcs' });
+    var d = fetch_data(req_data);
     return d;
 }
-
 
 const app = Vue.createApp({
     data() {
@@ -91,7 +62,6 @@ const app = Vue.createApp({
             selected_cat: ['06'],
             errors: '',
             period_type: 'custom',
-
         }
     },
     computed: {
@@ -130,8 +100,6 @@ const app = Vue.createApp({
                 return false;
             }
             var formData = new FormData(document.getElementById('form'));
-            // console.log(formData);
-            // var json = JSON.stringify(Object.fromEntries(formData));
             const jsonData = {};
             formData.forEach((value, key) => {
                 if (key == 'cat_ids') {
@@ -171,19 +139,8 @@ const app = Vue.createApp({
                             },
                             {
                                 extend: 'pdf',
-                                
                             }
                         ]
-                        // rowGroup: {
-                        // dataSrc: 3
-                        // },
-                        // columnDefs: [
-                        //     {
-                        //         "targets": [ 1, 2 ],
-                        //         "visible": false,
-                        //         "searchable": false
-                        //     }
-                        // ]
                     });
                     table.buttons().container().appendTo( '#div-performance .col-md-6:eq(0)' );
                     $('#performance_info').hide();
@@ -194,11 +151,9 @@ const app = Vue.createApp({
                     console.log(error);
                 }
             });
-            // 
         },
     },
     mounted() {
-        // this.populate_categories();
         this.fetch_perf();
         scrollToSelected("cat_ids");
     }
