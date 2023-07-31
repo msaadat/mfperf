@@ -65,6 +65,18 @@ def get_data():
 
     return data
 
+@app.route("/merge", methods=["POST"])
+def merge():
+    db = MFDatabase()
+    data = request.get_json()
+
+    if db.path_db_attach.exists():
+        db.merge_attached(datetime.fromisoformat(data["cutoff_date"]))
+        db.path_db_attach.unlink()
+
+        return "Success"
+    else:
+        return "Nothing to do"
 
 if __name__ == "__main__":
     app.run("localhost", 8000)

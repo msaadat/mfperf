@@ -178,6 +178,7 @@ class MFDatabase():
         self.conn.execute(f"ATTACH DATABASE '{self.path_db_attach}' AS new_db;")
         self.conn.execute("INSERT INTO navs SELECT * FROM new_db.navs;")
         self.conn.execute("INSERT INTO payouts SELECT * FROM new_db.payouts;")
+        self.conn.execute("DETACH DATABASE new_db;")
         self.conn.commit()
 
     def __fill_navs(self, conn, start_date, fund_id, mufap_tab):
@@ -324,17 +325,18 @@ class MFDatabase():
         return df_funds
 
 
-if __name__ == "__main__":
+# if __name__ == "__main__":
 
-    with MFDatabase() as db:
+    # with MFDatabase() as db:
         # db_create()
 
         # db_update_fundlist(conn)
         # db_update_fundlist(conn, True)
         #db.db_make_attached_db()
-        cutoff_date = datetime(2023, 7, 15)
+        # cutoff_date = datetime(2023, 7, 15)
         #db.update_attached(cutoff_date)
-        db.merge_attached(cutoff_date)
+        # db.merge_attached(cutoff_date)
+        # db.path_db_attach.unlink()
         #db.db_daily_update(datetime(2023, 7, 15))
 
         # end_date = datetime(2023,7,27)
