@@ -178,8 +178,8 @@ class MFDatabase():
         self.conn.execute(f"ATTACH DATABASE '{self.path_db_attach}' AS new_db;")
         self.conn.execute("INSERT INTO navs SELECT * FROM new_db.navs;")
         self.conn.execute("INSERT INTO payouts SELECT * FROM new_db.payouts;")
-        self.conn.execute("DETACH DATABASE new_db;")
         self.conn.commit()
+        self.conn.execute("DETACH DATABASE new_db;")
 
     def __fill_navs(self, conn, start_date, fund_id, mufap_tab):
         df = mufap.mufap_fund_navs(start_date, fund_id, mufap_tab=mufap_tab)
