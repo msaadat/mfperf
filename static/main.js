@@ -55,9 +55,10 @@ function fetch_amcs(amcid) {
 
 const app = Vue.createApp({
     data() {
+        let latest_date = fetch_latest_date();
         return {
-            // end_date: getPreviousDay(),
-            end_date: fetch_latest_date(),
+            end_date: latest_date,
+            start_date: getDateDelta(latest_date, -1),
             selected_amc: '0',
             selected_cat: ['06'],
             errors: '',
@@ -71,9 +72,6 @@ const app = Vue.createApp({
         amcs() {
             return fetch_amcs();
         },
-        start_date() {
-            return getDateDelta(this.end_date, -1);
-        }
     },
     methods: {
         onSubmit(e) {
@@ -154,6 +152,7 @@ const app = Vue.createApp({
         },
     },
     mounted() {
+        // this.start_date = getDateDelta(this.end_date, -1);
         this.fetch_perf();
         scrollToSelected("cat_ids");
     }
