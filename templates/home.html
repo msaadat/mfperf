@@ -94,7 +94,7 @@
                         </div>
                     </div>
                     <div class="col-sm gy-4">
-                        <span class="input-group-text"><label for="amc_id" class="form-label">AMCs:</label></span>
+                        <span class="input-group-text"><label for="amc_id">AMCs:</label></span>
 
                         <select name="amc_id" id="amc_id" v-model="selected_amc" @change="amcSelected"
                             class="form-select">
@@ -106,8 +106,7 @@
                         </select>
                     </div>
                     <div class="col-sm gy-4">
-                        <span class="input-group-text"><label for="cat_ids"
-                                class="form-label">Categories:</label></span>
+                        <span class="input-group-text"><label for="cat_ids">Categories:</label></span>
                         <select name="cat_ids" id="cat_ids" v-model="selected_cat" @change="onSubmit" multiple
                             class="form-select">
                             <option value="0" selected>All</option>
