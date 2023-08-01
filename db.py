@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 import sqlite3
 import time
 import pathlib
+import concurrent.futures
 
 import pandas as pd
 
@@ -136,37 +137,70 @@ class MFDatabase():
             df_new = fund_list[fund_list["exists"] == False].drop(columns="exists")
             if not df_new.empty:
                 df_new.to_sql("funds", self.conn, if_exists="append", index=False)
-
+    
 
     def update_attached(self, start_date):
         df_funds = self.get_fundlist()
 
         conn_attach = self.make_attached_db()
 
-        # l = ['36','28','35','29','32','31','30','34','33']
-        # df_funds = df_funds[df_funds['mufap_tab'] == 'vps']
-
-        # cur = self.conn_attach.cursor()
-
         n = df_funds.shape[0]
-        i = 1
+        i = 0
 
-        # cur.execute(f"DELETE FROM navs WHERE nav_date>='{start_date}'")
         print("Getting NAVs...")
-        for idx, row in df_funds.iterrows():
-            print(f"Updating {i} / {n}", end="\r")
-            i = i + 1
-            self.__fill_navs(conn_attach, start_date, row["fund_id"], row["mufap_tab"])
-            time.sleep(6)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+            futures = {
+                executor.submit(lambda x: self.__fetch_navs(start_date, x), row):idx for (idx, row) in df_funds.iterrows()
+            }
 
-        i = 1
-        # cur.execute(f"DELETE FROM payouts WHERE payout_date>='{start_date}'")
+            for future in concurrent.futures.as_completed(futures):
+                id = futures[future]
+                try:
+                    df = future.result()
+                    if not df.empty:
+                        # df["backward"] = df["fund_id"].apply(lambda x: self.get_fund_backward(x))
+                        backward = df_funds[df_funds["fund_id"]==df["fund_id"].iloc[0]]["backward"].iloc[0]
+                    
+                        if backward == 1:
+                            df["nav_date"] = df["nav_date"] - timedelta(days=1)
+                            df = df[df["nav_date"] >= start_date]
+                        
+                        df.to_sql("navs", conn_attach, if_exists="append", index=False)
+                except Exception as e:
+                    print(f"Error occurred for item {df_funds.iloc[id]}: {e}")
+                
+                i += 1
+                print(f"Updating {i} / {n}", end="\r")
+        
+
         print("\nGetting Payouts...")
-        for idx, row in df_funds.iterrows():
-            print(f"Updating {i} / {n}", end="\r")
-            i = i + 1
-            if row["mufap_tab"] != "vps":
-                self.__fill_payouts(conn_attach, start_date, row["fund_id"], row["cat_id"])
+        df_funds_novps = df_funds[df_funds['mufap_tab']!='vps']
+
+        n = df_funds_novps.shape[0]
+        i = 1
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+            futures = {
+                executor.submit(lambda x: self.__fetch_payouts(start_date, x), row):idx for (idx, row) in df_funds_novps.iterrows()
+            }
+
+            for future in concurrent.futures.as_completed(futures):
+                id = futures[future]
+                try:
+                    df = future.result()
+                    if not df.empty:
+                        backward = df_funds[df_funds["fund_id"]==df["fund_id"].iloc[0]]["backward"].iloc[0]
+                        if backward == 1:
+                            df["payout_date"] = df["payout_date"] - timedelta(days=1)
+                            df = df[df["payout_date"] >= start_date]
+                        
+                        df.to_sql("payouts", conn_attach, if_exists="append", index=False)
+                        
+                except Exception as e:
+                    print(f"Error occurred for item {df_funds.iloc[id]}: {e}")
+                
+                i += 1
+                print(f"Updating {i} / {n}", end="\r")
 
         print("\nDone.")
 
@@ -181,39 +215,24 @@ class MFDatabase():
         self.conn.commit()
         self.conn.execute("DETACH DATABASE new_db;")
 
-    def __fill_navs(self, conn, start_date, fund_id, mufap_tab):
-        df = mufap.mufap_fund_navs(start_date, fund_id, mufap_tab=mufap_tab)
-
+    def __fetch_navs(self, start_date, row):
+        # print(f"Getting {row['fund_id']}")
+        df = mufap.mufap_fund_navs(start_date, row["fund_id"], mufap_tab=row["mufap_tab"])
+        
         if df.shape[0] > 0:
             df.columns = ["fund_id", "nav", "nav_date"]
-            df["fund_id"] = fund_id
-
-            df["backward"] = df["fund_id"].apply(lambda x: self.get_fund_backward(x))
-
-            df["nav_date"] = df.apply(
-                lambda x: x["nav_date"] - timedelta(days=1)
-                if x["backward"]
-                else x["nav_date"],
-                axis=1,
-            )
-            del df["backward"]
-            df = df[df["nav_date"] >= start_date]
-
-            df.to_sql("navs", conn, if_exists="append", index=False)
+            df["fund_id"] = row["fund_id"]
+            
+        return df
 
 
-    def __fill_payouts(self, conn, start_date, fund_id, fund_cat):
-        df = mufap.mufap_fund_payouts(start_date, fund_id, fund_cat)
+    def __fetch_payouts(self, start_date, row):
+        df = mufap.mufap_fund_payouts(start_date, row["fund_id"], row["cat_id"])
         if df.shape[0] > 0:
             df.columns = ["fund_id", "payout", "exnav", "payout_date"]
-            backward = self.get_fund_backward(fund_id)
-            if backward == 1:
-                df["payout_date"] = df["payout_date"] - timedelta(days=1)
-                df = df[df["payout_date"] >= start_date]
+            df["fund_id"] = row["fund_id"]
 
-            df["fund_id"] = fund_id
-            df.to_sql("payouts", conn, if_exists="append", index=False)
-
+        return df
 
 
     def compute_return(self, op_date, end_date):
@@ -325,15 +344,16 @@ class MFDatabase():
         return df_funds
 
 
-# if __name__ == "__main__":
+if __name__ == "__main__":
 
-    # with MFDatabase() as db:
+    with MFDatabase() as db:
         # db_create()
 
         # db_update_fundlist(conn)
         # db_update_fundlist(conn, True)
         #db.db_make_attached_db()
-        # cutoff_date = datetime(2023, 7, 15)
+        cutoff_date = datetime(2023, 7, 22)
+        db.update_attached(cutoff_date)
         #db.update_attached(cutoff_date)
         # db.merge_attached(cutoff_date)
         # db.path_db_attach.unlink()
