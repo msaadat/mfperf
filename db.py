@@ -49,11 +49,11 @@ class MFDatabase():
 
     def get_latest_nav_date(self):
         qry = """
-        SELECT nav_date from (SELECT nav_date, COUNT(nav_date) AS date_count
+        SELECT nav_date, date_count FROM (SELECT nav_date, COUNT(nav_date) AS date_count
         FROM navs
         GROUP BY nav_date
         ORDER BY nav_date DESC
-        LIMIT 4) order by date_count desc limit 1;
+        LIMIT 4) WHERE date_count>=300 limit 3;
         """
         res = self.conn.execute(qry)
         return res.fetchone()[0]
