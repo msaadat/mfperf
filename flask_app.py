@@ -2,7 +2,7 @@ from flask import Flask, render_template, request, json
 from time import sleep
 from datetime import datetime
 
-from db import MFDatabase
+from db_mufap import MFDatabase
 import perf
 
 

@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 
-from db import MFDatabase
+from db_mufap import MFDatabase
 
 def get_performance_custom(start_date, end_date, cat_ids=[], amc_id=""):
     
