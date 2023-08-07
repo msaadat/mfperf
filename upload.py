@@ -1,7 +1,7 @@
 import requests
 from datetime import datetime
 
-from db import MFDatabase
+from db_mufap import MFDatabase
 
 db = MFDatabase()
 # db.update_fundlist()
