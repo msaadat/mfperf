@@ -40,6 +40,30 @@ class BMDatabase():
         self.conn.commit()
         self.conn.close()
 
+
+    def get_schema(self):
+        schema = ""
+        cursor = self.conn.cursor()
+        cursor.execute('select sql from sqlite_master')
+        for r in cursor.fetchall():
+            schema = schema + r[0] + "; \n"
+        cursor.close()
+        return schema
+    
+    
+    def make_attached_db(self):
+        if self.path_db_attach.exists():
+            self.path_db_attach.unlink()
+
+        schema = self.get_schema()
+
+        conn_attach = self.connect_attach()
+        conn_attach.executescript(schema)
+        conn_attach.commit()
+
+        return conn_attach
+    
+
     def __fetch_index(self, start_date):
         df = psx.fetch_index(start_date)
         idx_ids = {"KSE 100": "1", "KMI 30": "3"}
@@ -60,8 +84,29 @@ class BMDatabase():
             
         return df
 
-    def fetch_index(self, start_date):
-        return self.__fetch_index(start_date)
+    def update_attached(self, start_date):
+        conn_attach = self.make_attached_db()
+
+        print("Getting Indexes...")
+        df = self.__fetch_index(start_date)
+        df.to_sql("psx_indexes", conn_attach, if_exists="append", index=False)
+
+        print("Getting Scrips...")
+        df = self.__fetch_scrips(start_date)
+        df.to_sql("psx_scrips", conn_attach, if_exists="append", index=False)
+
+        print("\nDone.")
+
+        conn_attach.close()
+
+    def merge_attached(self, cutoff_date):
+        self.conn.execute(f"DELETE FROM psx_indexes WHERE index_date>='{cutoff_date}';")
+        self.conn.execute(f"DELETE FROM psx_scrips WHERE close_date>='{cutoff_date}';")
+        self.conn.execute(f"ATTACH DATABASE '{self.path_db_attach}' AS new_db;")
+        self.conn.execute("INSERT INTO psx_indexes SELECT * FROM new_db.psx_indexes;")
+        self.conn.execute("INSERT INTO psx_scrips SELECT * FROM new_db.psx_scrips;")
+        self.conn.commit()
+        self.conn.execute("DETACH DATABASE new_db;")
 
     def fetch_scrips(self, start_date):
         return self.__fetch_scrips(start_date)
@@ -69,7 +114,7 @@ class BMDatabase():
 if __name__ == '__main__':
     start_date = datetime.date(2023, 8, 4)
     with BMDatabase() as db:
-        df = db.fetch_scrips(start_date)
-        conn = db.conn
-        df.to_sql("psx_scrips", conn, if_exists="append", index=False)
-        print(df)
+        db.update_attached(start_date)
+        db.merge_attached(start_date)
+        db.path_db_attach.unlink()
+        
