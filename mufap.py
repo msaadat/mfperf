@@ -142,9 +142,15 @@ def mufap_funds_list():
             df_nav["Validity Date"], format="%b %d, %Y", errors="coerce"
         )
         current_date = df_nav.groupby("Validity Date").count().idxmax()["Fund Name"]
-        df_nav["backward"] = df_nav["Validity Date"].apply(
-            lambda x: 1 if x > current_date else 0
-        )
+
+        # etfs assumed to be backward
+        if nav_type == 'etf':
+            df_nav["backward"] = 1
+        else:
+            df_nav["backward"] = df_nav["Validity Date"].apply(
+                lambda x: 1 if x > current_date else 0
+            )
+
 
         content = r.content
 
