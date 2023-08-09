@@ -62,7 +62,7 @@ const app = Vue.createApp({
             selected_amc: '0',
             selected_cat: ['06'],
             errors: '',
-            period_type: 'custom',
+            period_type: 'mufap',
         }
     },
     computed: {
