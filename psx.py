@@ -4,6 +4,8 @@ import datetime
 import json
 import re
 import os
+import zipfile
+import io
 
 
 def fetch_scrips(start_date):
@@ -75,10 +77,21 @@ def fetch_index(start_date):
     df = pd.concat(df_list)
     return df
 
+def fetch_co_info():
+    url = "https://dps.psx.com.pk/download/text/listed_cmp.lst.Z"
+    r = requests.get(url)
+    zdata = io.BytesIO(r.content)
+    zfile = zipfile.ZipFile(zdata)
+    data = io.BytesIO(zfile.read('listed_cmp.lst'))
+    df = pd.read_csv(data, sep='|', header=None).dropna(axis=1)
+    df.columns = ['symbol', 'co_name', 'sector_id','sector_name','shares']
+
+    zfile.close()
+    return df
 
 if __name__ == "__main__":
     start_date = datetime.date(2023, 8, 4)
     # df = fetch_scrips(start_date)
     # print(df)
-    df = fetch_index(start_date)
+    df = fetch_co_info()
     print(df)
