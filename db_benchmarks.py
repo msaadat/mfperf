@@ -126,6 +126,13 @@ class BMDatabase:
         df = df.drop(["sector_name"], axis=1)
         df.to_sql("psx_co_info", self.conn, if_exists="replace", index=False)
 
+    def get_index_data(self, start_date, end_date, index_id=None):
+        qry = f"SELECT * FROM psx_indexes WHERE index_date>='{start_date}' AND index_date<='{end_date}'"
+        qry = qry + f" AND bm_id='{index_id}'" if index_id else ''
+        df = self.pd_read_sql_cached(qry)
+        print(qry)
+        return df
+
     def get_scrip_return(self, start_date, end_date, symbol=None):
         if symbol == None:
             qry = f"SELECT * FROM psx_scrips WHERE close_date>'{start_date}' AND close_date<='{end_date}'"
@@ -135,6 +142,10 @@ class BMDatabase:
         df = self.pd_read_sql_cached(qry)
         df["ln_change"] = np.log(df["close"] / df["ldcp"])
         ret = np.exp(df.groupby("symbol")["ln_change"].sum().fillna(0)) - 1
+
+        if symbol:
+            return ret[symbol]
+
         return ret
 
     def get_scrip_stddev(self, symbol, start_date, end_date):
@@ -171,13 +182,14 @@ class BMDatabase:
 if __name__ == "__main__":
     # start_date = datetime.date(2023, 8, 1)
     with BMDatabase() as db:
-        start_date = datetime.date.fromisoformat(db.get_latest_index_date()) + datetime.timedelta(days=1)
-        # start_date = datetime.date(2023, 7, 1)
-        db.update_attached(start_date)
-        db.merge_attached(start_date)
-        db.path_db_attach.unlink()
+        # start_date = datetime.date.fromisoformat(db.get_latest_index_date()) + datetime.timedelta(days=1)
+        # # start_date = datetime.date(2023, 7, 1)
+        # db.update_attached(start_date)
+        # db.merge_attached(start_date)
+        # db.path_db_attach.unlink()
         
         # df = db.get_scrip_traded_days("MEBL", "2022-07-31", "2023-07-31")
-        # print(df)
+        df = db.get_scrip_return("2023-08-02", "2023-08-09", "ATLH")
+        print(df)
         # db.update_psx_sectors()
         # df.to_excel("df.xlsx")
