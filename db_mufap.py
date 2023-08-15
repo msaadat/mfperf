@@ -53,7 +53,7 @@ class MFDatabase():
         FROM navs
         GROUP BY nav_date
         ORDER BY nav_date DESC
-        LIMIT 4) WHERE date_count>=300 limit 3;
+        LIMIT 10) WHERE date_count>=300;
         """
         res = self.conn.execute(qry)
         return res.fetchone()[0]
