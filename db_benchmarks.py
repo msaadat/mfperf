@@ -129,10 +129,15 @@ class BMDatabase:
     def get_index_data(self, start_date, end_date, index_id=None):
         qry = f"SELECT * FROM psx_indexes WHERE index_date>='{start_date}' AND index_date<='{end_date}'"
         qry = qry + f" AND bm_id='{index_id}'" if index_id else ''
+        qry = qry + " ORDER BY index_date ASC"
         df = self.pd_read_sql_cached(qry)
-        print(qry)
         return df
 
+    def get_index_stddev(self, start_date, end_date, index_id=None):
+        df = self.get_index_data(start_date, end_date, index_id)
+        df['return'] = df['close'].pct_change()
+        return df['return'].std(ddof=0)
+    
     def get_scrip_return(self, start_date, end_date, symbol=None):
         if symbol == None:
             qry = f"SELECT * FROM psx_scrips WHERE close_date>'{start_date}' AND close_date<='{end_date}'"
@@ -157,13 +162,16 @@ class BMDatabase:
         return ret
 
     def get_scrip_correl(self, symbol1, symbol2, start_date, end_date):
+        if symbol1 == symbol2:
+            return 1.0
+        
         qry = f"SELECT * FROM psx_scrips WHERE symbol in {(symbol1, symbol2)} AND close_date>'{start_date}' AND close_date<='{end_date}'"
-        print(qry)
         df = self.pd_read_sql_cached(qry)
         df["ln_change"] = np.log(df["close"] / df["ldcp"])
-        ret1 = df[df["symbol"] == symbol1]["ln_change"].reset_index(drop=True)
-        ret2 = df[df["symbol"] == symbol2]["ln_change"].reset_index(drop=True)
-        ret = ret1.corr(ret2)
+        df = df[['close_date','symbol','ln_change']]
+        df = df.pivot(columns=['symbol'], index=['close_date'])
+        df = df.fillna(0)
+        ret = df.corr().iloc[0,1]
         return ret
 
     def get_scrip_avg_volume(self, symbol, start_date, end_date):
@@ -177,7 +185,29 @@ class BMDatabase:
         ret = self.conn.execute(qry)
 
         return ret.fetchone()[0]
+    
+    def get_scrip_info(self, symbol):
+        qry = f"SELECT * FROM psx_co_info WHERE symbol='{symbol}'"
+        ret = self.conn.execute(qry)
 
+        return ret.fetchone()
+
+    def get_scrip_data(self, symbol, start_date=None, end_date=None, last=False):
+        qry = f"SELECT * FROM psx_scrips WHERE symbol='{symbol}'"
+
+        if end_date:
+            qry = qry + f" AND close_date<='{end_date}'"
+
+        if last:
+            qry = qry + " ORDER BY close_date DESC LIMIT 1"
+        else:
+            if start_date:
+                qry = qry + f" AND close_date>'{start_date}'"
+
+        df = self.pd_read_sql_cached(qry)
+
+        return df
+    
 
 if __name__ == "__main__":
     # start_date = datetime.date(2023, 8, 1)
