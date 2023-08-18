@@ -14,7 +14,7 @@ import db_benchmarks
 
 
 def fetch_index_weights():
-    xl_file_path = "PSX Index weights.xlsx"
+    xl_file_path = pathlib.Path(__file__).parent / "PSX Index weights.xlsx"
     wb = xl.Workbook()
 
     urls = {"KSE100":"https://dps.psx.com.pk/indices/KSE100",

@@ -20,16 +20,20 @@ def fetch_scrips(start_date):
         a = requests.post(url, data=data)
         try:
             df = pd.read_html(a.content)[0]
-            df.columns = [a for a in df.columns.to_flat_index()]
-            df = df[["SYMBOL", "OPEN", "HIGH", "LOW", "CLOSE", "LDCP", "VOLUME"]]
-            df["close_date"] = data["date"]
-            df_list.append(df)
-            # print(cur_date.isoformat())
+            if not df.empty:
+                df.columns = [a for a in df.columns.to_flat_index()]
+                df = df[["SYMBOL", "OPEN", "HIGH", "LOW", "CLOSE", "LDCP", "VOLUME"]]
+                df["close_date"] = data["date"]
+                df_list.append(df)
         except:
             pass
         start_date = start_date + datetime.timedelta(days=1)
 
-    df = pd.concat(df_list)
+    if df_list != []:
+        df = pd.concat(df_list)
+    else:
+        df = pd.DataFrame()
+
     return df
 
 
@@ -56,25 +60,31 @@ def fetch_index(start_date):
         a = requests.post(url, data=data, headers=headers)
         js = json.loads(a.content)
         df = pd.DataFrame(js["data"])
-        df.drop("sDate", axis=1, inplace=True)
-        df["sIndex"] = key
-        df.columns = [
-            "index_date",
-            "index",
-            "open",
-            "high",
-            "low",
-            "close",
-            "turnover",
-            "mcap",
-            "tradedval",
-        ]
-        for i in df.columns[2:]:
-            df[i] = pd.to_numeric(df[i].str.replace(",", ""))
-        df = df.sort_values(by=["index_date"])
-        df_list.append(df)
 
-    df = pd.concat(df_list)
+        if not df.empty:
+            df.drop("sDate", axis=1, inplace=True)
+            df["sIndex"] = key
+            df.columns = [
+                "index_date",
+                "index",
+                "open",
+                "high",
+                "low",
+                "close",
+                "turnover",
+                "mcap",
+                "tradedval",
+            ]
+            for i in df.columns[2:]:
+                df[i] = pd.to_numeric(df[i].str.replace(",", ""))
+            df = df.sort_values(by=["index_date"])
+            df_list.append(df)
+
+    if df_list != []:
+        df = pd.concat(df_list)
+    else:
+        df = pd.DataFrame()
+
     return df
 
 def fetch_co_info():
