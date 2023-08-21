@@ -73,6 +73,15 @@ const app = Vue.createApp({
             return fetch_amcs();
         },
     },
+    watch: {
+        period_type(new_type, old_type) {
+            if (old_type == 'mufap') {
+                if (this.start_date >= this.end_date) {
+                    this.start_date = getDateDelta(this.end_date, -1);
+                }
+            }
+        }
+    },
     methods: {
         onSubmit(e) {
             e.preventDefault();
@@ -85,9 +94,11 @@ const app = Vue.createApp({
         },
         validateForm() {
             this.errors = '';
-            if (this.start_date >= this.end_date) {
-                this.errors = "Invalid dates";
-                return false;
+            if (this.period_type == 'custom') {
+                if (this.start_date >= this.end_date) {
+                    this.errors = "Invalid dates";
+                    return false;
+                }
             }
 
             return true;
