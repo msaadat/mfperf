@@ -22,6 +22,7 @@ def fetch_index_weights():
 
     for k, i in urls.items():
         r = requests.get(i)
+        print(f'Fetching {k} weights')
         soup = BeautifulSoup(r.content, 'html.parser')
         tbl = soup.find('table')
         tag_divs = soup.find_all('div', {'class': 'tag'})

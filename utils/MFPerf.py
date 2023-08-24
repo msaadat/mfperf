@@ -81,3 +81,13 @@ def get_scrip_close(symbol, start_date=None, end_date=None, last=False):
         return df['close'].iloc[0]
     else:
         return "asd"
+    
+@xw.func
+def get_scrip_traded_days(symbol, start_date, end_date):
+    df = db.get_scrip_data(symbol, start_date, end_date)
+    return df.shape[0]
+
+@xw.func
+def get_index_traded_days(start_date, end_date, index_id):
+    df = db.get_index_data(start_date, end_date, index_id)
+    return df.shape[0]
