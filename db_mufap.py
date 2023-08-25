@@ -81,8 +81,15 @@ class MFDatabase():
     #     conn.close()
 
 
-    def get_fundlist(self):
+    def get_fundlist(self, with_cats=False, with_amcs=False):
         df_funds = self.pd_read_sql_cached("SELECT * from funds", parse_dates=["inception"])
+
+        if with_cats:
+            df_funds = pd.merge(df_funds, self.get_cat_list(), on="cat_id", how="left")
+
+        if with_amcs:
+            df_funds = pd.merge(df_funds, self.get_amc_list(), on="amc_id", how="left")
+
         return df_funds
 
 
@@ -235,10 +242,27 @@ class MFDatabase():
         return df
 
 
-    def compute_return(self, op_date, end_date):
+    def compute_return(self, df_funds, op_date, end_date):
         df_navs_op = self.pd_read_sql_cached(f"SELECT * from navs WHERE nav_date='{op_date}'")
-        del df_navs_op["nav_date"]
+        
         df_navs_cl = self.pd_read_sql_cached(f"SELECT * from navs WHERE nav_date='{end_date}'")
+
+        df_funds["annualize"] = df_funds["category"].apply(mufap.mufap_cat_annualize)
+
+        df_navs_op = df_navs_op[df_navs_op["nav"] != 0]
+        df_navs_cl = df_navs_cl[df_navs_cl["nav"] != 0]
+
+        # add interpolated missing op navs
+        df_funds_missing = pd.merge(df_funds, df_navs_op, on='fund_id', how='left')
+        df_funds_missing = df_funds_missing[df_funds_missing["nav"].isna() & df_funds_missing["annualize"]]
+        df_funds_missing = df_funds_missing.merge(df_navs_cl, on='fund_id', how='left')
+        df_funds_missing = df_funds_missing[~df_funds_missing["nav_y"].isna()]
+        df_funds_missing["nav"] = df_funds_missing['fund_id'].apply(lambda x: self.get_nav_interpolated(x, op_date))
+        df_funds_missing['nav_date'] = op_date
+        df_funds_missing = df_funds_missing[['fund_id', 'nav_date','nav']]
+        df_navs_op = pd.concat([df_navs_op, df_funds_missing])
+
+        del df_navs_op["nav_date"]
         del df_navs_cl["nav_date"]
 
         if not df_navs_cl.empty:
@@ -306,19 +330,51 @@ class MFDatabase():
             axis=1,
         )
         return df
+    
+    def get_nav_interpolated(self, fund_id, nav_date):
+        df_nav_after = self.pd_read_sql_cached(f"SELECT * from navs WHERE fund_id='{fund_id}'" 
+                                               f" AND nav_date>'{nav_date}' AND nav!=0 ORDER BY nav_date ASC LIMIT 1", parse_dates=['nav_date'])
+
+        if df_nav_after.empty:
+            return None
+        
+        df_nav_before = self.pd_read_sql_cached(f"SELECT * from navs WHERE fund_id='{fund_id}'"
+                                                f" AND nav_date<'{nav_date}' AND nav!=0 ORDER BY nav_date DESC LIMIT 1", parse_dates=['nav_date'])
+
+        if df_nav_before.empty:
+            return None
+        
+        df = pd.concat([df_nav_before, df_nav_after])
+
+        df_payouts = pd.read_sql(
+                f"SELECT * FROM payouts WHERE fund_id='{fund_id}' "
+                f"AND payout_date>'{df['nav_date'].min()}' AND payout_date<='{df['nav_date'].max()}'",
+                self.conn, parse_dates=['payout_date']
+            )
+        if not df_payouts.empty:
+            df_payouts['full_nav'] = df_payouts['exnav'] + df_payouts['payout']
+            df = df.merge(df_payouts[['payout_date', 'full_nav']], how='left', left_on='nav_date', right_on='payout_date')
+            df['full_nav'] = df['full_nav'].fillna(df['nav'])
+            df = df.drop(['nav','payout_date'], axis=1)
+            df = df.rename(columns={'full_nav':'nav'})
+
+        print(df)
+        df = df.drop(['fund_id'], axis=1)
+        df = df.set_index('nav_date').asfreq('D').interpolate()
+        nav = df.loc[nav_date]
+        return nav['nav']
+        
+
         
     def get_performance(self, op_date, end_date):
-        df_funds = self.get_fundlist()
-        del df_funds["inception"]
+        df_funds = self.get_fundlist(with_cats=True)
 
-        df = self.compute_return(op_date, end_date)
+        df = self.compute_return(df_funds, op_date, end_date)
 
         if df.empty:
             return df
 
-        df_cats = self.get_cat_list()
         df = pd.merge(df_funds, df, on="fund_id", how="left")
-        df = pd.merge(df, df_cats, on="cat_id", how="left")
         
         delta_days = (end_date - op_date).days
         df = self.annualize_retun(df, "return", delta_days)
@@ -327,14 +383,11 @@ class MFDatabase():
         return df
 
     def get_performance_multi(self, dates_list):
-        df_funds = self.get_fundlist()
+        df_funds = self.get_fundlist(with_cats=True)
         del df_funds["inception"]
 
-        df_cats = self.get_cat_list()
-        df_funds = df_funds.merge(df_cats, on="cat_id", how="left")
-
         for title, op_date, end_date in dates_list:
-            df = self.compute_return(op_date, end_date)
+            df = self.compute_return(df_funds, op_date, end_date)
             df = df.rename(columns={'return': title})
             df_funds = df_funds.merge(df[["fund_id", title]], on="fund_id", how="left")
             delta_days = (end_date - op_date).days
