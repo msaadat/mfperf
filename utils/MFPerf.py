@@ -12,10 +12,6 @@ import db_benchmarks
 
 db = db_benchmarks.BMDatabase()
 
-@xw.func
-def double_sum(x, y):
-    """Returns twice the sum of the two arguments"""
-    return 2 * (x + y)
 
 @xw.func
 @xw.ret(index=False)
@@ -67,6 +63,11 @@ def get_scrip_shares(symbol):
     return ret[3]
 
 @xw.func
+def get_scrip_info(symbol, info_id):
+    ret = db.get_scrip_info(symbol)
+    return ret[info_id]
+
+@xw.func
 def get_scrip_sector(symbol):
     ret = db.get_scrip_info(symbol)
     sec_id = ret[2]
@@ -91,3 +92,8 @@ def get_scrip_traded_days(symbol, start_date, end_date):
 def get_index_traded_days(start_date, end_date, index_id):
     df = db.get_index_data(start_date, end_date, index_id)
     return df.shape[0]
+
+@xw.func
+def get_index_correl(start_date, end_date, index_id, symbol):
+    ret = db.get_index_correl(start_date, end_date, index_id, symbol)
+    return ret

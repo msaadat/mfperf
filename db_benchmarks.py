@@ -138,6 +138,19 @@ class BMDatabase:
         df['return'] = df['close'].pct_change()
         return df['return'].std(ddof=0)
     
+    def get_index_daily_return(self, start_date, end_date, index_id):
+        df = self.get_index_data(start_date, end_date, index_id)
+        df['return'] = df['close'].pct_change()
+        return df[['index_date', 'return']].dropna()
+    
+    def get_index_correl(self, start_date, end_date, index_id, symbol):
+        idx_returns = self.get_index_daily_return(start_date, end_date, index_id)
+        scrip_returns = self.get_scrip_daily_return(symbol, start_date, end_date)
+        df = pd.merge(idx_returns, scrip_returns, how='left', left_on='index_date', right_on='close_date')
+        df = df.fillna(0)
+
+        return df[['return','ln_change']].corr().iloc[0,1]
+    
     def get_scrip_return(self, start_date, end_date, symbol=None):
         if symbol == None:
             qry = f"SELECT * FROM psx_scrips WHERE close_date>'{start_date}' AND close_date<='{end_date}'"
@@ -145,6 +158,9 @@ class BMDatabase:
             qry = f"SELECT * FROM psx_scrips WHERE symbol='{symbol}' AND close_date>'{start_date}' AND close_date<='{end_date}'"
 
         df = self.pd_read_sql_cached(qry)
+        if df.empty:
+            return 0
+        
         df["ln_change"] = np.log(df["close"] / df["ldcp"])
         ret = np.exp(df.groupby("symbol")["ln_change"].sum().fillna(0)) - 1
 
@@ -158,6 +174,14 @@ class BMDatabase:
         df = self.pd_read_sql_cached(qry)
         df["ln_change"] = np.log(df["close"] / df["ldcp"])
         ret = df["ln_change"].std(ddof=0)
+
+        return ret
+    
+    def get_scrip_daily_return(self, symbol, start_date, end_date):
+        qry = f"SELECT * FROM psx_scrips WHERE symbol='{symbol}' AND close_date>'{start_date}' AND close_date<='{end_date}'"
+        df = self.pd_read_sql_cached(qry)
+        df["ln_change"] = np.log(df["close"] / df["ldcp"])
+        ret = df[["close_date", "ln_change"]]
 
         return ret
 
@@ -219,7 +243,8 @@ if __name__ == "__main__":
         # db.path_db_attach.unlink()
         
         # df = db.get_scrip_traded_days("MEBL", "2022-07-31", "2023-07-31")
-        df = db.get_scrip_return("2023-08-02", "2023-08-09", "ATLH")
-        print(df)
+        df = db.get_scrip_daily_return("HBL", "2023-08-01", "2023-08-31")
+        df2 = db.get_index_correl("2023-08-01", "2023-08-31", 1, "HBL")
+        print(df2)
         # db.update_psx_sectors()
         # df.to_excel("df.xlsx")
