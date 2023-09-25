@@ -262,7 +262,6 @@ class MFDatabase():
         
         if not df_funds_missing_eq.empty:
             df_funds_missing_eq = self.get_navs_last(df_funds_missing_eq['fund_id'], op_date)
-            print(df_funds_missing_eq)
             df_navs_op = pd.concat([df_navs_op, df_funds_missing_eq])
 
         df_funds_missing_fi = df_funds_missing[df_funds_missing["annualize"]]

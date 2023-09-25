@@ -1,5 +1,7 @@
 import string
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 from datetime import datetime, timedelta
 from urllib.parse import quote
 
@@ -46,7 +48,13 @@ def mufap_fund_navs(start_date, fund_id="", fund_cat="", mufap_tab="", full=Fals
 
     url = f"https://www.mufap.com.pk/nav-report.php?tab={nav_tab}&amc=&fname={fund_id}&cat=&strdate={date_enc}&endate=&submitted=Show+Report"
 
-    r = requests.get(url)
+    session = requests.Session()
+    retry = Retry(connect=3, backoff_factor=0.5)
+    adapter = HTTPAdapter(max_retries=retry)
+    session.mount('http://', adapter)
+    session.mount('https://', adapter)
+    
+    r = session.get(url)
 
     df_nav = pd.read_html(r.text)[0]
     df_nav.columns = df_nav.iloc[0]
@@ -75,7 +83,13 @@ def mufap_fund_payouts(start_date, fund_id="", fund_cat=""):
     nav_tab = mufap_get_nav_tab(fund_cat)
     url = f"https://www.mufap.com.pk/payout-report.php?tab={nav_tab}&amc=&fname={fund_id}&cat=&strdate={date_enc}&endate=&submitted=Show+Report"
 
-    r = requests.get(url)
+    session = requests.Session()
+    retry = Retry(connect=3, backoff_factor=0.5)
+    adapter = HTTPAdapter(max_retries=retry)
+    session.mount('http://', adapter)
+    session.mount('https://', adapter)
+
+    r = session.get(url)
 
     df = pd.read_html(r.text)[0]
     df.columns = df.iloc[0]
