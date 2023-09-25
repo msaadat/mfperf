@@ -18,13 +18,13 @@ db = db_benchmarks.BMDatabase()
 def get_index_data(start_date, end_date, index_id):
     start_date = str(start_date)[:10]
     end_date = str(end_date)[:10]
-    df = db.get_index_data(start_date, end_date, index_id)
+    df = db.get_index_data(index_id, start_date, end_date)
     return df
 
 @xw.func
-def get_index_close(end_date, index_id):
+def get_index_close(end_date, index_id, last=False):
     end_date = str(end_date)[:10]
-    df = db.get_index_data(end_date, end_date, index_id)
+    df = db.get_index_data(index_id, end_date=end_date, last=last)
     if df.empty:
         return "#N/A"
     else:
@@ -90,7 +90,7 @@ def get_scrip_traded_days(symbol, start_date, end_date):
 
 @xw.func
 def get_index_traded_days(start_date, end_date, index_id):
-    df = db.get_index_data(start_date, end_date, index_id)
+    df = db.get_index_data(index_id, start_date, end_date)
     return df.shape[0]
 
 @xw.func

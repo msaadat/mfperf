@@ -126,10 +126,15 @@ class BMDatabase:
         df = df.drop(["sector_name"], axis=1)
         df.to_sql("psx_co_info", self.conn, if_exists="replace", index=False)
 
-    def get_index_data(self, start_date, end_date, index_id=None):
-        qry = f"SELECT * FROM psx_indexes WHERE index_date>='{start_date}' AND index_date<='{end_date}'"
-        qry = qry + f" AND bm_id='{index_id}'" if index_id else ''
-        qry = qry + " ORDER BY index_date ASC"
+    def get_index_data(self, index_id, start_date=None, end_date=None, last=False):
+        qry = f"SELECT * FROM psx_indexes WHERE bm_id='{index_id}'"
+        if end_date:
+            qry = qry + f" AND index_date<='{end_date}'"
+        if last:
+            qry = qry + " ORDER BY index_date DESC LIMIT 1"
+        else:
+            if start_date:
+                qry = qry + f" AND index_date>'{start_date}'  ORDER BY index_date ASC"
         df = self.pd_read_sql_cached(qry)
         return df
 
@@ -226,7 +231,7 @@ class BMDatabase:
             qry = qry + " ORDER BY close_date DESC LIMIT 1"
         else:
             if start_date:
-                qry = qry + f" AND close_date>'{start_date}'"
+                qry = qry + f" AND close_date>='{start_date}'"
 
         df = self.pd_read_sql_cached(qry)
 
