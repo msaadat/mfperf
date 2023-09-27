@@ -1,4 +1,3 @@
-import requests
 import pandas as pd
 import pathlib
 import datetime
@@ -11,17 +10,18 @@ from openpyxl.utils.dataframe import dataframe_to_rows
 
 sys.path.append(str(pathlib.Path(__file__).parent.parent.absolute()))
 import db_benchmarks
+import net_utils
 
 
 def fetch_index_weights():
-    xl_file_path = pathlib.Path(__file__).parent / "PSX Index weights.xlsx"
+    xl_file_path = pathlib.Path("C:/Users/Mian Muhammad Sadaat/Dropbox/Work/AWT RC/Reports/") / "PSX Index weights.xlsx"
     wb = xl.Workbook()
 
     urls = {"KSE100":"https://dps.psx.com.pk/indices/KSE100",
             "KMI30":"https://dps.psx.com.pk/indices/KMI30"}
 
     for k, i in urls.items():
-        r = requests.get(i)
+        r = net_utils.get(i)
         print(f'Fetching {k} weights')
         soup = BeautifulSoup(r.content, 'html.parser')
         tbl = soup.find('table')

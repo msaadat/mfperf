@@ -1,4 +1,3 @@
-import requests
 import pandas as pd
 import datetime
 import json
@@ -6,6 +5,8 @@ import re
 import os
 import zipfile
 import io
+
+import net_utils
 
 
 def fetch_scrips(start_date):
@@ -17,7 +18,7 @@ def fetch_scrips(start_date):
     df_list = []
     while start_date < end_date:
         data["date"] = start_date.isoformat()
-        a = requests.post(url, data=data)
+        a = net_utils.post(url, data=data)
         try:
             df = pd.read_html(a.content)[0]
             if not df.empty:
@@ -57,7 +58,7 @@ def fetch_index(start_date):
 
     for key, i in indexes.items():
         data["indexid"] = i
-        a = requests.post(url, data=data, headers=headers)
+        a = net_utils.post(url, data=data, headers=headers)
         js = json.loads(a.content)
         df = pd.DataFrame(js["data"])
 
@@ -89,7 +90,7 @@ def fetch_index(start_date):
 
 def fetch_co_info():
     url = "https://dps.psx.com.pk/download/text/listed_cmp.lst.Z"
-    r = requests.get(url)
+    r = net_utils.get(url)
     zdata = io.BytesIO(r.content)
     zfile = zipfile.ZipFile(zdata)
     data = io.BytesIO(zfile.read('listed_cmp.lst'))

@@ -1,16 +1,15 @@
 import string
-import requests
-from requests.adapters import HTTPAdapter
-from urllib3.util.retry import Retry
+import os
+import io
+import re
+
 from datetime import datetime, timedelta
 from urllib.parse import quote
 
 import pandas as pd
 from bs4 import BeautifulSoup
 
-headers = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:102.0) Gecko/20100101 Firefox/102.0"
-}
+import net_utils
 
 def encode_date(dt):
     return quote(dt.strftime("%m/%d/%Y"), safe="")
@@ -48,13 +47,7 @@ def mufap_fund_navs(start_date, fund_id="", fund_cat="", mufap_tab="", full=Fals
 
     url = f"https://www.mufap.com.pk/nav-report.php?tab={nav_tab}&amc=&fname={fund_id}&cat=&strdate={date_enc}&endate=&submitted=Show+Report"
 
-    session = requests.Session()
-    retry = Retry(connect=3, backoff_factor=0.5)
-    adapter = HTTPAdapter(max_retries=retry)
-    session.mount('http://', adapter)
-    session.mount('https://', adapter)
-    
-    r = session.get(url)
+    r = net_utils.get(url)
 
     df_nav = pd.read_html(r.text)[0]
     df_nav.columns = df_nav.iloc[0]
@@ -83,13 +76,7 @@ def mufap_fund_payouts(start_date, fund_id="", fund_cat=""):
     nav_tab = mufap_get_nav_tab(fund_cat)
     url = f"https://www.mufap.com.pk/payout-report.php?tab={nav_tab}&amc=&fname={fund_id}&cat=&strdate={date_enc}&endate=&submitted=Show+Report"
 
-    session = requests.Session()
-    retry = Retry(connect=3, backoff_factor=0.5)
-    adapter = HTTPAdapter(max_retries=retry)
-    session.mount('http://', adapter)
-    session.mount('https://', adapter)
-
-    r = session.get(url)
+    r = net_utils.get(url)
 
     df = pd.read_html(r.text)[0]
     df.columns = df.iloc[0]
@@ -132,7 +119,7 @@ def mufap_funds_list():
     content = ""
 
     for nav_type, url in urls.items():
-        r = requests.get(url)
+        r = net_utils.get(url)
 
         df_nav = pd.read_html(r.text)[0]
         df_nav.columns = df_nav.iloc[0]
@@ -279,7 +266,7 @@ def mufap_category_list(url="https://www.mufap.com.pk/nav-report.php?tab=01", tx
 
 def mufap_options_todf(find_str, url=None, txt=None):
     if not txt:
-        r = requests.get(url)
+        r = net_utils.get(url)
         txt = r.content
 
     soup = BeautifulSoup(txt, "lxml")
