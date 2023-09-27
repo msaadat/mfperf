@@ -62,6 +62,10 @@ class BMDatabase:
         conn_attach.commit()
 
         return conn_attach
+    
+    def get_bm_info(self):
+        df = self.pd_read_sql_cached("SELECT * FROM benchmarks;")
+        return df
 
     def get_latest_index_date(self):
         qry = "SELECT index_date FROM psx_indexes ORDER BY index_date DESC LIMIT 1;"
@@ -139,12 +143,12 @@ class BMDatabase:
         return df
 
     def get_index_stddev(self, start_date, end_date, index_id=None):
-        df = self.get_index_data(start_date, end_date, index_id)
+        df = self.get_index_data(index_id, start_date, end_date)
         df['return'] = df['close'].pct_change()
         return df['return'].std(ddof=0)
     
     def get_index_daily_return(self, start_date, end_date, index_id):
-        df = self.get_index_data(start_date, end_date, index_id)
+        df = self.get_index_data(index_id, start_date, end_date)
         df['return'] = df['close'].pct_change()
         return df[['index_date', 'return']].dropna()
     
@@ -190,18 +194,29 @@ class BMDatabase:
 
         return ret
 
-    def get_scrip_correl(self, symbol1, symbol2, start_date, end_date):
-        if symbol1 == symbol2:
-            return 1.0
+    def get_scrip_correl(self, symbols, start_date, end_date):
+        lst_symbols = str(symbols)[1:-1]
         
-        qry = f"SELECT * FROM psx_scrips WHERE symbol in {(symbol1, symbol2)} AND close_date>'{start_date}' AND close_date<='{end_date}'"
+        qry = f"SELECT * FROM psx_scrips WHERE symbol in ({lst_symbols}) AND close_date>'{start_date}' AND close_date<='{end_date}'"
         df = self.pd_read_sql_cached(qry)
         df["ln_change"] = np.log(df["close"] / df["ldcp"])
         df = df[['close_date','symbol','ln_change']]
         df = df.pivot(columns=['symbol'], index=['close_date'])
         df = df.fillna(0)
-        ret = df.corr().iloc[0,1]
+        df = df.reset_index(drop=True)
+        df.columns = df.columns.droplevel()
+        ret = df.corr()
         return ret
+    
+    def get_portfolio_stddev(self, portfolio, start_date, end_date):
+        portfolio['stddev'] = portfolio['symbol'].apply(lambda x: self.get_scrip_stddev(x, start_date, end_date))
+        portfolio['w_stddev'] = portfolio['weight'] * portfolio['stddev']
+        correls = self.get_scrip_correl(portfolio['symbol'].tolist(), start_date, end_date)
+        df_wstd = portfolio[['symbol', 'w_stddev']].set_index('symbol')
+
+        df1 = df_wstd.transpose().dot(correls)
+        
+        return df1.dot(df_wstd).iloc[0,0]**(1/2)
 
     def get_scrip_avg_volume(self, symbol, start_date, end_date):
         qry = f"SELECT avg(volume) FROM psx_scrips WHERE symbol='{symbol}' AND close_date>'{start_date}' AND close_date<='{end_date}'"
@@ -237,6 +252,12 @@ class BMDatabase:
 
         return df
     
+    def get_fi_avg(self, bm_id, start_date, end_date):
+        qry = f"SELECT avg(rate) FROM fi_rates WHERE bm_id='{bm_id}' AND bm_date>'{start_date}' AND bm_date<='{end_date}'"
+        ret = self.conn.execute(qry)
+
+        return ret.fetchone()[0]
+        
 
 if __name__ == "__main__":
     # start_date = datetime.date(2023, 8, 1)
@@ -248,8 +269,8 @@ if __name__ == "__main__":
         # db.path_db_attach.unlink()
         
         # df = db.get_scrip_traded_days("MEBL", "2022-07-31", "2023-07-31")
-        df = db.get_scrip_daily_return("HBL", "2023-08-01", "2023-08-31")
-        df2 = db.get_index_correl("2023-08-01", "2023-08-31", 1, "HBL")
-        print(df2)
+        # df2 = db.get_index_correl("2023-08-01", "2023-08-31", 1, "HBL")
+        # print(df)
+        print (db.get_fi_avg("25", "2022-07-31", "2023-07-31"))
         # db.update_psx_sectors()
         # df.to_excel("df.xlsx")

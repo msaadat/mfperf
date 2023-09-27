@@ -49,7 +49,10 @@ def get_scrip_stddev(symbol, start_date, end_date):
 
 @xw.func
 def get_scrip_correl(symbol1, symbol2, start_date, end_date):
-    ret = db.get_scrip_correl(symbol1, symbol2, start_date, end_date)
+    if symbol1==symbol2:
+        return 1
+    
+    ret = db.get_scrip_correl([symbol1, symbol2], start_date, end_date).iloc[0,1]
     return ret
 
 @xw.func
@@ -97,3 +100,16 @@ def get_index_traded_days(start_date, end_date, index_id):
 def get_index_correl(start_date, end_date, index_id, symbol):
     ret = db.get_index_correl(start_date, end_date, index_id, symbol)
     return ret
+
+@xw.func
+def get_portfolio_stddev(symbols, weights, start_date, end_date):
+    df_portfolio = pd.DataFrame(list(zip(symbols, weights)))
+    df_portfolio.columns = ['symbol','weight']
+    ret = db.get_portfolio_stddev(df_portfolio, start_date, end_date)
+    return ret
+
+@xw.func
+def get_fi_avg(bm_name, start_date, end_date):
+    bms = db.get_bm_info()
+    bm_id = bms[bms['bm_name']==bm_name]['bm_id'].iloc[0]
+    return db.get_fi_avg(bm_id, start_date, end_date)
