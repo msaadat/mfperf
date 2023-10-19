@@ -287,11 +287,114 @@ def mufap_options_todf(find_str, url=None, txt=None):
 
     return df
 
+def mufap_fetch_pkrv_single(pkrv_url):
+    r = net_utils.get(pkrv_url)
+    df_pkrv = pd.read_csv(io.StringIO(r.text))
+    col_find = [x for x in ['AvgRate', 'Avg Rate', 'Mid Rate'] if x in df_pkrv.columns]
+    if col_find != []:
+        df_pkrv = df_pkrv[col_find[0]]
+    else:
+        df_pkrv = df_pkrv.dropna(axis=1, how='all').iloc[:,-1].dropna()
+
+    df_pkrv = df_pkrv[pd.to_numeric(df_pkrv, errors='coerce').notnull()]
+    df_pkrv = df_pkrv.reset_index(drop=True)
+
+    df = pd.DataFrame([
+        "pkrv_7d",
+        "pkrv_15d",
+        "pkrv_30d",
+        "pkrv_60d",
+        "pkrv_90d",
+        "pkrv_120d",
+        "pkrv_180d",
+        "pkrv_270d",
+        "pkrv_1y",
+        "pkrv_2y",
+        "pkrv_3y",
+        "pkrv_4y",
+        "pkrv_5y",
+        "pkrv_6y",
+        "pkrv_7y",
+        "pkrv_8y",
+        "pkrv_9y",
+        "pkrv_10y",
+        "pkrv_15y",
+        "pkrv_20y",
+        "pkrv_30y",
+    ], columns=['bm_name'])
+
+    df['rate'] = df_pkrv
+    pkrv_date = os.path.basename(pkrv_url)[4:-4]
+    df['bm_date'] = datetime.strptime(pkrv_date,'%d%m%Y')
+    df = df.dropna()
+
+    return df
+
+def mufap_fetch_pkrvs(start_date=None, latest=False):
+    if not start_date:
+        mufap_year = datetime.now().year
+    else:
+        mufap_year = start_date.year
+
+    url = f"https://www.mufap.com.pk/industry.php?tab={mufap_year}1"
+
+    r = net_utils.get(url)
+
+    soup = BeautifulSoup(r.content, 'html.parser')
+    content_div = soup.find('div', {'id': 'content'})
+
+    pkrv_url_tags = content_div.find_all('a', href=re.compile("PKRV\d{8}\.csv"))
+
+    if latest:
+        return mufap_fetch_pkrv_single(pkrv_url_tags[0].get('href'))
+    
+    pkrv_urls = [x.get('href') for x in pkrv_url_tags]
+    pkrv_urls = [x for x in pkrv_urls if datetime.strptime(os.path.basename(x)[4:-4],'%d%m%Y') >= start_date]
+    dict_dfs = net_utils.threaded_get(pkrv_urls, mufap_fetch_pkrv_single)
+    df = pd.concat(list(dict_dfs.values()))
+
+    return df
+
+def mufap_fetch_kibor(start_date=None):
+    if not start_date:
+        u_year = datetime.now().year
+    else:
+        u_year = start_date.year
+
+    br_kibor = f"https://www.brecorder.com/markets/kibor-rates/{u_year}"
+
+    r = net_utils.get(br_kibor)
+    df = pd.read_html(r.text)[0]
+    df['Date'] = pd.to_datetime(df['Date'], format='%b %d, %Y', errors='coerce')
+    df = df.dropna(axis=0, subset=['Date'])
+    df = df[df["Date"]>=start_date]
+
+    df.columns = [
+        'bm_date',
+        'kibor_1m_bid',
+        'kibor_1m',
+        'kibor_1w_bid',
+        'kibor_1w',
+        'kibor_1y_bid',
+        'kibor_1y',
+        'kibor_2w_bid',
+        'kibor_2w',
+        'kibor_3m_bid',
+        'kibor_3m',
+        'kibor_6m_bid',
+        'kibor_6m',
+        'kibor_9m_bid',
+        'kibor_9m'
+    ]
+
+    return df
 
 if __name__ == "__main__":
     # df = mufap_options_todf("AMC:","https://www.mufap.com.pk/nav-report.php?tab=01")
     # df.to_excel('amcs.xlsx')
-    df = mufap_funds_list()
-    df.to_excel("df.xlsx")
+    df = mufap_fetch_kibor(start_date=datetime(2023,9,24))
+    print(df)
+    print(df.info())
+    # df.to_excel('pkrvs.xlsx', index=False)
 
     # print(df[df['fund_id']=='B152'])

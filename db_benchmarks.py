@@ -5,6 +5,7 @@ import sqlite3
 import pandas as pd
 
 import psx
+import mufap
 
 
 class BMDatabase:
@@ -71,6 +72,32 @@ class BMDatabase:
         qry = "SELECT index_date FROM psx_indexes ORDER BY index_date DESC LIMIT 1;"
         res = self.conn.execute(qry)
         return res.fetchone()[0]
+    
+    def get_latest_fi_date(self):
+        qry = "SELECT bm_date FROM fi_rates ORDER BY bm_date DESC LIMIT 1;"
+        res = self.conn.execute(qry)
+        return res.fetchone()[0]
+
+    def __fetch_pkrv(self, start_date):
+        df = mufap.mufap_fetch_pkrvs(start_date)
+        bm_ids = self.get_bm_info()[["bm_id", "bm_name"]]
+        df = df.merge(bm_ids, on="bm_name", how="left")
+        df = df.drop(["bm_name"], axis=1)
+        df['bm_date'] = df['bm_date'].apply(lambda x: x.date())
+
+        return df
+    
+    def __fetch_kibor(self, start_date):
+        df = mufap.mufap_fetch_kibor(start_date)
+        df = df.melt(id_vars=["bm_date"])
+        df.columns = ['bm_date', 'bm_name','rate']
+
+        bm_ids = self.get_bm_info()[["bm_id", "bm_name"]]
+        df = df.merge(bm_ids, on="bm_name", how="left")
+        df = df.drop(["bm_name"], axis=1)
+        df['bm_date'] = df['bm_date'].apply(lambda x: x.date())
+
+        return df
 
     def __fetch_index(self, start_date):
         df = psx.fetch_index(start_date)
@@ -103,16 +130,27 @@ class BMDatabase:
         df = self.__fetch_scrips(start_date)
         df.to_sql("psx_scrips", conn_attach, if_exists="append", index=False)
 
+        print("Getting PKRV...")
+        df = self.__fetch_pkrv(start_date)
+        df.to_sql("fi_rates", conn_attach, if_exists="append", index=False)
+
+        print("Getting KIBOR...")
+        df = self.__fetch_kibor(start_date)
+        df.to_sql("fi_rates", conn_attach, if_exists="append", index=False)
+
         print("\nDone.")
 
         conn_attach.close()
 
     def merge_attached(self, cutoff_date):
-        self.conn.execute(f"DELETE FROM psx_indexes WHERE index_date>='{cutoff_date}';")
-        self.conn.execute(f"DELETE FROM psx_scrips WHERE close_date>='{cutoff_date}';")
+        self.conn.execute(f"DELETE FROM psx_indexes WHERE index_date>='{cutoff_date.date()}';")
+        self.conn.execute(f"DELETE FROM psx_scrips WHERE close_date>='{cutoff_date.date()}';")
+        self.conn.execute(f"DELETE FROM fi_rates WHERE bm_date>='{cutoff_date.date()}';")
+        self.conn.commit()
         self.conn.execute(f"ATTACH DATABASE '{self.path_db_attach}' AS new_db;")
         self.conn.execute("INSERT INTO psx_indexes SELECT * FROM new_db.psx_indexes;")
         self.conn.execute("INSERT INTO psx_scrips SELECT * FROM new_db.psx_scrips;")
+        self.conn.execute("INSERT INTO fi_rates SELECT * FROM new_db.fi_rates;")
         self.conn.commit()
         self.conn.execute("DETACH DATABASE new_db;")
 
@@ -262,15 +300,15 @@ class BMDatabase:
 if __name__ == "__main__":
     # start_date = datetime.date(2023, 8, 1)
     with BMDatabase() as db:
-        # start_date = datetime.date.fromisoformat(db.get_latest_index_date()) + datetime.timedelta(days=1)
+        start_date = datetime.datetime.fromisoformat(db.get_latest_fi_date()) + datetime.timedelta(days=1)
         # # start_date = datetime.date(2023, 7, 1)
-        # db.update_attached(start_date)
-        # db.merge_attached(start_date)
-        # db.path_db_attach.unlink()
+        db.update_attached(start_date)
+        db.merge_attached(start_date)
+        db.path_db_attach.unlink()
         
-        # df = db.get_scrip_traded_days("MEBL", "2022-07-31", "2023-07-31")
+        # df = db.fetch_kibor(datetime.datetime(2023,9,25))
+        # df = db.fetch_pkrv(datetime.datetime(2023,9,25))
         # df2 = db.get_index_correl("2023-08-01", "2023-08-31", 1, "HBL")
         # print(df)
-        print (db.get_fi_avg("25", "2022-07-31", "2023-07-31"))
         # db.update_psx_sectors()
         # df.to_excel("df.xlsx")
