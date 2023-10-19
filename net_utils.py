@@ -15,11 +15,14 @@ def get(url):
     
     return session.get(url)
 
-def threaded_get(urls, max_workers=5):
+def threaded_get(urls, call_back=None, max_workers=5):
     ret = {}
+    if not call_back:
+        call_back = get
+
     with concurrent.futures.ThreadPoolExecutor(max_workers) as executor:
         futures = {
-            executor.submit(get, url):url for url in urls
+            executor.submit(call_back, url):url for url in urls
         }
 
         for future in concurrent.futures.as_completed(futures):
@@ -40,4 +43,4 @@ def post(url, data=None, headers=None):
     session.mount('http://', adapter)
     session.mount('https://', adapter)
     
-    return session.post(url, data=data)
+    return session.post(url, data=data, headers=headers)

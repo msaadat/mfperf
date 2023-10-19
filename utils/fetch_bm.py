@@ -42,7 +42,7 @@ def fetch_index_weights():
 
 db = db_benchmarks.BMDatabase()
 
-start_date = datetime.date.fromisoformat(db.get_latest_index_date()) + datetime.timedelta(days=1)
+start_date = datetime.datetime.fromisoformat(db.get_latest_fi_date()) + datetime.timedelta(days=1)
 # # start_date = datetime.date(2023, 7, 1)
 db.update_attached(start_date)
 db.merge_attached(start_date)

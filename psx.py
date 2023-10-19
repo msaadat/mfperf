@@ -11,13 +11,13 @@ import net_utils
 
 def fetch_scrips(start_date):
     # end_date = datetime.date.fromisoformat("2022-01-21")
-    end_date = datetime.date.today()
+    end_date = datetime.datetime.today()
     data = {"date": ""}
     url = "https://dps.psx.com.pk/historical"
 
     df_list = []
     while start_date < end_date:
-        data["date"] = start_date.isoformat()
+        data["date"] = start_date.date().isoformat()
         a = net_utils.post(url, data=data)
         try:
             df = pd.read_html(a.content)[0]
@@ -42,7 +42,7 @@ def fetch_index(start_date):
     end_date = datetime.date.today()
     indexes = {"KSE 100": "1", "KMI 30": "3"}
     data = {
-        "from": start_date.isoformat(),
+        "from": start_date.date().isoformat(),
         "to": end_date.isoformat(),
         "indexid": "1",
         "term": "1",
@@ -101,8 +101,8 @@ def fetch_co_info():
     return df
 
 if __name__ == "__main__":
-    start_date = datetime.date(2023, 8, 4)
+    start_date = datetime.datetime(2023, 9, 27)
     # df = fetch_scrips(start_date)
     # print(df)
-    df = fetch_co_info()
+    df = fetch_scrips(start_date)
     print(df)
