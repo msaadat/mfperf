@@ -25,6 +25,8 @@ def get_index_data(start_date, end_date, index_id):
 def get_index_close(end_date, index_id, last=False):
     end_date = str(end_date)[:10]
     df = db.get_index_data(index_id, end_date=end_date, last=last)
+    if not last:
+        return df.iloc[-1][2]
     if df.empty:
         return "#N/A"
     else:
@@ -68,7 +70,7 @@ def get_scrip_shares(symbol):
 @xw.func
 def get_scrip_info(symbol, info_id):
     ret = db.get_scrip_info(symbol)
-    return ret[info_id]
+    return ret[int(info_id)]
 
 @xw.func
 def get_scrip_sector(symbol):

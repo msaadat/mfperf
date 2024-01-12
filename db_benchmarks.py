@@ -80,10 +80,12 @@ class BMDatabase:
 
     def __fetch_pkrv(self, start_date):
         df = mufap.mufap_fetch_pkrvs(start_date)
-        bm_ids = self.get_bm_info()[["bm_id", "bm_name"]]
-        df = df.merge(bm_ids, on="bm_name", how="left")
-        df = df.drop(["bm_name"], axis=1)
-        df['bm_date'] = df['bm_date'].apply(lambda x: x.date())
+        
+        if not df.empty:
+            bm_ids = self.get_bm_info()[["bm_id", "bm_name"]]
+            df = df.merge(bm_ids, on="bm_name", how="left")
+            df = df.drop(["bm_name"], axis=1)
+            df['bm_date'] = df['bm_date'].apply(lambda x: x.date())
 
         return df
     

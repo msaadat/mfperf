@@ -290,7 +290,7 @@ def mufap_options_todf(find_str, url=None, txt=None):
 def mufap_fetch_pkrv_single(pkrv_url):
     r = net_utils.get(pkrv_url)
     df_pkrv = pd.read_csv(io.StringIO(r.text))
-    col_find = [x for x in ['AvgRate', 'Avg Rate', 'Mid Rate'] if x in df_pkrv.columns]
+    col_find = [x for x in ['AvgRate', 'Avg Rate', 'Mid Rate', 'FMAP'] if x in df_pkrv.columns]
     if col_find != []:
         df_pkrv = df_pkrv[col_find[0]]
     else:
@@ -350,8 +350,11 @@ def mufap_fetch_pkrvs(start_date=None, latest=False):
     
     pkrv_urls = [x.get('href') for x in pkrv_url_tags]
     pkrv_urls = [x for x in pkrv_urls if datetime.strptime(os.path.basename(x)[4:-4],'%d%m%Y') >= start_date]
-    dict_dfs = net_utils.threaded_get(pkrv_urls, mufap_fetch_pkrv_single)
-    df = pd.concat(list(dict_dfs.values()))
+    if pkrv_urls != []:
+        dict_dfs = net_utils.threaded_get(pkrv_urls, mufap_fetch_pkrv_single)
+        df = pd.concat(list(dict_dfs.values()))
+    else:
+        df = pd.DataFrame()
 
     return df
 
@@ -361,7 +364,8 @@ def mufap_fetch_kibor(start_date=None):
     else:
         u_year = start_date.year
 
-    br_kibor = f"https://www.brecorder.com/markets/kibor-rates/{u_year}"
+    # br_kibor = f"https://www.brecorder.com/markets/kibor-rates/{u_year}"
+    br_kibor = f"https://www.brecorder.com/markets/kibor-rates/"
 
     r = net_utils.get(br_kibor)
     df = pd.read_html(r.text)[0]
