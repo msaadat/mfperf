@@ -1,34 +1,42 @@
 import pandas as pd
 import datetime
 import json
-import re
-import os
 import zipfile
 import io
 
 import net_utils
 
-
-def fetch_scrips(start_date):
-    # end_date = datetime.date.fromisoformat("2022-01-21")
-    end_date = datetime.datetime.today()
+def fetch_scrips_single(dt):
     data = {"date": ""}
     url = "https://dps.psx.com.pk/historical"
 
+    data["date"] = dt.date().isoformat()
+    a = net_utils.post(url, data=data)
+    try:
+        df = pd.read_html(a.content)[0]
+        if not df.empty:
+            df.columns = [a for a in df.columns.to_flat_index()]
+            df = df[["SYMBOL", "OPEN", "HIGH", "LOW", "CLOSE", "LDCP", "VOLUME"]]
+            df["close_date"] = data["date"]
+    except:
+        df = pd.DataFrame()
+
+    return df
+
+def fetch_scrips(start_date=None, dt_list=None):
+    end_date = datetime.datetime.today()
+    # end_date = datetime.datetime(2023, 10, 24)
+
     df_list = []
-    while start_date < end_date:
-        data["date"] = start_date.date().isoformat()
-        a = net_utils.post(url, data=data)
-        try:
-            df = pd.read_html(a.content)[0]
-            if not df.empty:
-                df.columns = [a for a in df.columns.to_flat_index()]
-                df = df[["SYMBOL", "OPEN", "HIGH", "LOW", "CLOSE", "LDCP", "VOLUME"]]
-                df["close_date"] = data["date"]
-                df_list.append(df)
-        except:
-            pass
-        start_date = start_date + datetime.timedelta(days=1)
+
+    if start_date:
+        while start_date < end_date:
+            df_list.append(fetch_scrips_single(start_date))
+            start_date = start_date + datetime.timedelta(days=1)
+
+    else:
+        for i in dt_list:
+            df_list.append(fetch_scrips_single(i))
 
     if df_list != []:
         df = pd.concat(df_list)
@@ -101,8 +109,18 @@ def fetch_co_info():
     return df
 
 if __name__ == "__main__":
-    start_date = datetime.datetime(2023, 9, 27)
+    start_date = datetime.datetime(2023, 10, 20)
     # df = fetch_scrips(start_date)
     # print(df)
-    df = fetch_scrips(start_date)
-    print(df)
+    dt_list = ["2021-11-07",
+        "2021-10-19",
+        "2021-10-17",
+        "2021-10-03",
+        "2018-12-16",
+        "2021-11-14",
+        "2021-09-26",
+        "2021-10-10"]
+    dt_list = [datetime.datetime.fromisoformat(x) for x in dt_list]
+    df = fetch_scrips(dt_list=dt_list)
+    # print(df)
+    df.to_csv('scrips.csv')
